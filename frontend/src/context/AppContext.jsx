@@ -4,6 +4,7 @@ import {
   appointmentApi,
   customerApi,
   dashboardApi,
+  designerApi,
   inspectionApi,
   procurementApi,
   projectApi,
@@ -22,6 +23,7 @@ const apiMap = {
 export function AppProvider({ children }) {
   const [state, setState] = useState({
     dashboard: null,
+    designerWorkload: null,
     customers: [],
     appointments: [],
     projects: [],
@@ -35,15 +37,16 @@ export function AppProvider({ children }) {
     setLoading(true);
     setError("");
     try {
-      const [dashboard, customers, appointments, projects, procurements, inspections] = await Promise.all([
+      const [dashboard, designerWorkload, customers, appointments, projects, procurements, inspections] = await Promise.all([
         dashboardApi.summary(),
+        designerApi.workload(),
         customerApi.list(),
         appointmentApi.list(),
         projectApi.list(),
         procurementApi.list(),
         inspectionApi.list(),
       ]);
-      setState({ dashboard, customers, appointments, projects, procurements, inspections });
+      setState({ dashboard, designerWorkload, customers, appointments, projects, procurements, inspections });
     } catch (err) {
       setError(err.message);
     } finally {

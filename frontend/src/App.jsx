@@ -6,6 +6,7 @@ import { MODULES } from "./modules/navigation.js";
 import { AppointmentsPage } from "./pages/AppointmentsPage.jsx";
 import { CustomersPage } from "./pages/CustomersPage.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
+import { DesignersPage } from "./pages/DesignersPage.jsx";
 import { InspectionsPage } from "./pages/InspectionsPage.jsx";
 import { ProcurementPage } from "./pages/ProcurementPage.jsx";
 import { ProjectsPage } from "./pages/ProjectsPage.jsx";
@@ -14,6 +15,7 @@ const pages = {
   dashboard: DashboardPage,
   customers: CustomersPage,
   appointments: AppointmentsPage,
+  designers: DesignersPage,
   projects: ProjectsPage,
   procurement: ProcurementPage,
   inspections: InspectionsPage,

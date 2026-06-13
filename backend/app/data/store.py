@@ -216,6 +216,117 @@ class InMemoryStore:
                 return deepcopy(updated)
         return None
 
+    def designer_workload(self) -> dict[str, Any]:
+        status_order = ["new", "contacted", "measured", "quoted", "signed", "lost"]
+
+        designers: set[str] = set()
+        for customer in self.customers:
+            if customer.get("owner"):
+                designers.add(customer["owner"])
+
+        def status_index(status: str) -> int:
+            try:
+                return status_order.index(status)
+            except ValueError:
+                return -1
+
+        workload = []
+        for designer in sorted(designers):
+            designer_customers = [
+                c for c in self.customers
+                if c.get("owner") == designer
+            ]
+
+            measured_customers = [
+                c for c in designer_customers
+                if status_index(c.get("status", "")) >= status_order.index("measured")
+            ]
+            quoted_customers = [
+                c for c in designer_customers
+                if status_index(c.get("status", "")) >= status_order.index("quoted")
+            ]
+            signed_customers = [
+                c for c in designer_customers
+                if c.get("status") == "signed"
+            ]
+
+            measured_count = len(measured_customers)
+            quoted_count = len(quoted_customers)
+            signed_count = len(signed_customers)
+
+            total_budget = sum(c["budget"] for c in signed_customers)
+            avg_budget = total_budget / signed_count if signed_count > 0 else 0
+
+            measurement_to_quote_rate = (
+                round((quoted_count / measured_count) * 100, 1)
+                if measured_count > 0 else 0.0
+            )
+            quote_to_sign_rate = (
+                round((signed_count / quoted_count) * 100, 1)
+                if quoted_count > 0 else 0.0
+            )
+            measurement_to_sign_rate = (
+                round((signed_count / measured_count) * 100, 1)
+                if measured_count > 0 else 0.0
+            )
+
+            def customer_summary(c: dict) -> dict:
+                return {
+                    "id": c["id"],
+                    "name": c["name"],
+                    "community": c.get("community", ""),
+                    "budget": c.get("budget", 0),
+                    "status": c.get("status", ""),
+                }
+
+            workload.append({
+                "designer": designer,
+                "measured": measured_count,
+                "quoted": quoted_count,
+                "signed": signed_count,
+                "signed_budget": total_budget,
+                "avg_budget": round(avg_budget, 2),
+                "measurement_to_quote_rate": measurement_to_quote_rate,
+                "quote_to_sign_rate": quote_to_sign_rate,
+                "measurement_to_sign_rate": measurement_to_sign_rate,
+                "measured_customers": [customer_summary(c) for c in measured_customers],
+                "quoted_customers": [customer_summary(c) for c in quoted_customers],
+                "signed_customers": [customer_summary(c) for c in signed_customers],
+            })
+
+        total_measured = sum(item["measured"] for item in workload)
+        total_quoted = sum(item["quoted"] for item in workload)
+        total_signed = sum(item["signed"] for item in workload)
+        total_signed_budget = sum(item["signed_budget"] for item in workload)
+
+        overall_measurement_to_quote_rate = (
+            round((total_quoted / total_measured) * 100, 1)
+            if total_measured > 0 else 0.0
+        )
+        overall_quote_to_sign_rate = (
+            round((total_signed / total_quoted) * 100, 1)
+            if total_quoted > 0 else 0.0
+        )
+        overall_measurement_to_sign_rate = (
+            round((total_signed / total_measured) * 100, 1)
+            if total_measured > 0 else 0.0
+        )
+
+        return {
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+            "workload": workload,
+            "summary": {
+                "total_designers": len(designers),
+                "total_measured": total_measured,
+                "total_quoted": total_quoted,
+                "total_signed": total_signed,
+                "total_signed_budget": total_signed_budget,
+                "overall_measurement_to_quote_rate": overall_measurement_to_quote_rate,
+                "overall_quote_to_sign_rate": overall_quote_to_sign_rate,
+                "overall_measurement_to_sign_rate": overall_measurement_to_sign_rate,
+            },
+        }
+
     def summary(self) -> dict[str, Any]:
         active_projects = [project for project in self.projects if project["progress"] < 100]
         procurement_budget = sum(item["budget"] for item in self.procurements)

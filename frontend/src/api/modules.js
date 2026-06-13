@@ -4,6 +4,10 @@ export const dashboardApi = {
   summary: () => api.get("/dashboard/summary"),
 };
 
+export const designerApi = {
+  workload: () => api.get("/designers/workload"),
+};
+
 export const customerApi = {
   list: () => api.get("/customers"),
   create: (payload) => api.post("/customers", payload),

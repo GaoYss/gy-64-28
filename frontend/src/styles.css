@@ -396,6 +396,24 @@ td {
   font-size: 12px;
 }
 
+.designer-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.designer-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #2b6f73;
+  color: #ffffff;
+  display: inline-grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -432,6 +450,134 @@ td {
   .update-row {
     grid-template-columns: 1fr;
     align-items: start;
+  }
+}
+
+.stat-category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.stat-category-card {
+  background: #ffffff;
+  border: 1px solid #dfe6ea;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.stat-category-header {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  cursor: pointer;
+}
+
+.stat-category-header:hover {
+  background: #f7fafb;
+}
+
+.stat-category-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #20252b;
+}
+
+.stat-category-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #61717d;
+}
+
+.stat-category-meta strong {
+  font-size: 22px;
+}
+
+.stat-category-body {
+  border-top: 1px solid #edf1f3;
+  padding: 14px 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.stat-designer-group {
+  display: grid;
+  gap: 8px;
+}
+
+.stat-designer-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-designer-label .designer-avatar {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+
+.stat-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: auto;
+}
+
+.stat-customer-list {
+  display: grid;
+  gap: 4px;
+  padding-left: 34px;
+}
+
+.stat-customer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #f7fafb;
+  font-size: 13px;
+}
+
+.stat-customer-name {
+  font-weight: 600;
+  color: #20252b;
+}
+
+.stat-customer-community {
+  color: #61717d;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stat-customer-budget {
+  color: #31414d;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 980px) {
+  .stat-category-grid {
+    grid-template-columns: 1fr;
   }
 }
 
