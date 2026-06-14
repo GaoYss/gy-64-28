@@ -202,6 +202,12 @@ class InMemoryStore:
     def list_items(self, collection: str) -> list[dict[str, Any]]:
         return deepcopy(getattr(self, collection))
 
+    def find_item(self, collection: str, item_id: int) -> dict[str, Any] | None:
+        for item in getattr(self, collection):
+            if item["id"] == item_id:
+                return deepcopy(item)
+        return None
+
     def add_item(self, collection: str, payload: dict[str, Any]) -> dict[str, Any]:
         item = {"id": next(self._counters[collection]), **payload}
         getattr(self, collection).append(item)

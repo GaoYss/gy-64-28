@@ -13,7 +13,7 @@ class TestCustomerToMeasurement:
             "house_type": "3 bed 2 bath",
             "source": "Online ad",
             "budget": 300000,
-            "status": "contacted",
+            "status": "new",
             "reported_at": str(date.today() - timedelta(days=5)),
             "owner": "Lina",
             "notes": "Interested in modern style"
@@ -21,6 +21,8 @@ class TestCustomerToMeasurement:
         create_resp = client.post("/api/customers", json=customer_data)
         assert create_resp.status_code == 201
         customer_id = create_resp.json()["id"]
+
+        client.patch(f"/api/customers/{customer_id}", json={"status": "contacted"})
 
         update_resp = client.patch(
             f"/api/customers/{customer_id}",
@@ -43,7 +45,7 @@ class TestCustomerToMeasurement:
             "house_type": "2 bed 1 bath",
             "source": "Referral",
             "budget": 200000,
-            "status": "contacted",
+            "status": "new",
             "reported_at": str(date.today() - timedelta(days=3)),
             "owner": "Kai",
             "notes": ""
@@ -53,10 +55,8 @@ class TestCustomerToMeasurement:
         customer_id = customer["id"]
         customer_name = customer["name"]
 
-        client.patch(
-            f"/api/customers/{customer_id}",
-            json={"status": "measured"}
-        )
+        client.patch(f"/api/customers/{customer_id}", json={"status": "contacted"})
+        client.patch(f"/api/customers/{customer_id}", json={"status": "measured"})
 
         appointment_data = {
             "customer_id": customer_id,
@@ -93,6 +93,132 @@ class TestCustomerToMeasurement:
     def test_update_nonexistent_customer(self, client):
         resp = client.patch("/api/customers/9999", json={"status": "measured"})
         assert resp.status_code == 404
+
+    def test_customer_skip_status_blocked(self, client):
+        customer_data = {
+            "name": "Skip Test",
+            "phone": "13900000010",
+            "community": "Skip Community",
+            "house_type": "3 bed 2 bath",
+            "source": "Online ad",
+            "budget": 300000,
+            "status": "new",
+            "reported_at": str(date.today()),
+            "owner": "Lina",
+            "notes": ""
+        }
+        create_resp = client.post("/api/customers", json=customer_data)
+        customer_id = create_resp.json()["id"]
+
+        skip_resp = client.patch(
+            f"/api/customers/{customer_id}",
+            json={"status": "signed"}
+        )
+        assert skip_resp.status_code == 409
+        detail = skip_resp.json()["detail"]
+        assert "当前状态不允许该操作" in detail
+        assert "new" in detail
+        assert "signed" in detail
+
+    def test_customer_new_to_contacted_allowed(self, client):
+        customer_data = {
+            "name": "Normal Flow",
+            "phone": "13900000011",
+            "community": "Normal Community",
+            "house_type": "2 bed 1 bath",
+            "source": "Referral",
+            "budget": 200000,
+            "status": "new",
+            "reported_at": str(date.today()),
+            "owner": "Kai",
+            "notes": ""
+        }
+        create_resp = client.post("/api/customers", json=customer_data)
+        customer_id = create_resp.json()["id"]
+
+        resp = client.patch(f"/api/customers/{customer_id}", json={"status": "contacted"})
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "contacted"
+
+    def test_customer_contacted_to_signed_blocked(self, client):
+        customer_data = {
+            "name": "Jump Test",
+            "phone": "13900000012",
+            "community": "Jump Community",
+            "house_type": "2 bed 1 bath",
+            "source": "Walk-in",
+            "budget": 250000,
+            "status": "contacted",
+            "reported_at": str(date.today()),
+            "owner": "Mia",
+            "notes": ""
+        }
+        create_resp = client.post("/api/customers", json=customer_data)
+        customer_id = create_resp.json()["id"]
+
+        resp = client.patch(f"/api/customers/{customer_id}", json={"status": "signed"})
+        assert resp.status_code == 409
+        assert "当前状态不允许该操作" in resp.json()["detail"]
+
+    def test_customer_to_lost_allowed_from_any_status(self, client):
+        customer_data = {
+            "name": "Lost Test",
+            "phone": "13900000013",
+            "community": "Lost Community",
+            "house_type": "2 bed 1 bath",
+            "source": "Online ad",
+            "budget": 150000,
+            "status": "measured",
+            "reported_at": str(date.today()),
+            "owner": "Lina",
+            "notes": ""
+        }
+        create_resp = client.post("/api/customers", json=customer_data)
+        customer_id = create_resp.json()["id"]
+
+        resp = client.patch(f"/api/customers/{customer_id}", json={"status": "lost"})
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "lost"
+
+    def test_customer_lost_cannot_transition(self, client):
+        customer_data = {
+            "name": "Stuck Test",
+            "phone": "13900000014",
+            "community": "Stuck Community",
+            "house_type": "1 bed 1 bath",
+            "source": "Online ad",
+            "budget": 100000,
+            "status": "lost",
+            "reported_at": str(date.today()),
+            "owner": "Kai",
+            "notes": ""
+        }
+        create_resp = client.post("/api/customers", json=customer_data)
+        customer_id = create_resp.json()["id"]
+
+        resp = client.patch(f"/api/customers/{customer_id}", json={"status": "contacted"})
+        assert resp.status_code == 409
+
+    def test_customer_sequential_status_flow(self, client):
+        customer_data = {
+            "name": "Full Seq",
+            "phone": "13900000015",
+            "community": "Seq Community",
+            "house_type": "3 bed 2 bath",
+            "source": "Referral",
+            "budget": 400000,
+            "status": "new",
+            "reported_at": str(date.today()),
+            "owner": "Mia",
+            "notes": ""
+        }
+        create_resp = client.post("/api/customers", json=customer_data)
+        customer_id = create_resp.json()["id"]
+
+        for next_status in ["contacted", "measured", "quoted", "signed"]:
+            resp = client.patch(f"/api/customers/{customer_id}", json={"status": next_status})
+            assert resp.status_code == 200
+            assert resp.json()["status"] == next_status
 
 
 class TestProjectProgressBoundary:
@@ -229,6 +355,85 @@ class TestProjectProgressBoundary:
         final = next(p for p in projects if p["id"] == project_id)
         assert final["phase"] == "completed"
         assert final["progress"] == 100
+
+    def test_project_completed_without_progress_100_rejected_on_create(self, client):
+        project_data = {
+            "customer_name": "Invalid Complete",
+            "project_name": "Invalid Complete Project",
+            "manager": "Zhou",
+            "phase": "completed",
+            "progress": 80,
+            "start_date": str(date.today() - timedelta(days=50)),
+            "expected_finish": str(date.today()),
+            "risk_level": "low"
+        }
+        resp = client.post("/api/projects", json=project_data)
+        assert resp.status_code == 422
+        assert "进度必须达到100" in resp.json()["detail"]
+
+    def test_project_set_completed_without_progress_100_rejected_on_update(self, client):
+        project_data = {
+            "customer_name": "Update Complete",
+            "project_name": "Update Complete Project",
+            "manager": "Tang",
+            "phase": "finishing",
+            "progress": 85,
+            "start_date": str(date.today() - timedelta(days=50)),
+            "expected_finish": str(date.today() + timedelta(days=10)),
+            "risk_level": "low"
+        }
+        create_resp = client.post("/api/projects", json=project_data)
+        project_id = create_resp.json()["id"]
+
+        resp = client.patch(
+            f"/api/projects/{project_id}",
+            json={"phase": "completed"}
+        )
+        assert resp.status_code == 422
+        assert "进度必须达到100" in resp.json()["detail"]
+
+    def test_project_set_completed_with_progress_100_allowed(self, client):
+        project_data = {
+            "customer_name": "Valid Complete",
+            "project_name": "Valid Complete Project",
+            "manager": "Zhou",
+            "phase": "finishing",
+            "progress": 95,
+            "start_date": str(date.today() - timedelta(days=55)),
+            "expected_finish": str(date.today() + timedelta(days=5)),
+            "risk_level": "low"
+        }
+        create_resp = client.post("/api/projects", json=project_data)
+        project_id = create_resp.json()["id"]
+
+        resp = client.patch(
+            f"/api/projects/{project_id}",
+            json={"phase": "completed", "progress": 100}
+        )
+        assert resp.status_code == 200
+        assert resp.json()["phase"] == "completed"
+        assert resp.json()["progress"] == 100
+
+    def test_project_progress_100_without_completed_phase_allowed(self, client):
+        project_data = {
+            "customer_name": "Progress 100",
+            "project_name": "Progress 100 No Complete",
+            "manager": "Tang",
+            "phase": "finishing",
+            "progress": 90,
+            "start_date": str(date.today() - timedelta(days=55)),
+            "expected_finish": str(date.today() + timedelta(days=5)),
+            "risk_level": "low"
+        }
+        create_resp = client.post("/api/projects", json=project_data)
+        project_id = create_resp.json()["id"]
+
+        resp = client.patch(
+            f"/api/projects/{project_id}",
+            json={"progress": 100}
+        )
+        assert resp.status_code == 200
+        assert resp.json()["progress"] == 100
 
 
 class TestProcurementStatus:
@@ -379,6 +584,87 @@ class TestProcurementStatus:
         }
         resp = client.post("/api/procurements", json=invalid_data)
         assert resp.status_code == 422
+
+    def test_procurement_nonexistent_project_rejected(self, client):
+        procurement_data = {
+            "project_id": 9999,
+            "project_name": "Ghost Project",
+            "material": "Phantom Cement",
+            "supplier": "Nowhere Co.",
+            "quantity": 50,
+            "unit": "bags",
+            "budget": 3000,
+            "status": "pending",
+            "required_date": str(date.today() + timedelta(days=7))
+        }
+        resp = client.post("/api/procurements", json=procurement_data)
+        assert resp.status_code == 422
+        assert "关联的项目不存在" in resp.json()["detail"]
+        assert "9999" in resp.json()["detail"]
+
+    def test_procurement_update_to_nonexistent_project_rejected(self, client):
+        project_resp = client.post("/api/projects", json={
+            "customer_name": "Proc Update Test",
+            "project_name": "Proc Update Project",
+            "manager": "Zhou",
+            "phase": "design",
+            "progress": 5,
+            "start_date": str(date.today()),
+            "expected_finish": str(date.today() + timedelta(days=60)),
+            "risk_level": "low"
+        })
+        project_id = project_resp.json()["id"]
+        project_name = project_resp.json()["project_name"]
+
+        proc_data = {
+            "project_id": project_id,
+            "project_name": project_name,
+            "material": "Test Material",
+            "supplier": "Test Supplier",
+            "quantity": 10,
+            "unit": "units",
+            "budget": 1000,
+            "status": "pending",
+            "required_date": str(date.today() + timedelta(days=7))
+        }
+        create_resp = client.post("/api/procurements", json=proc_data)
+        proc_id = create_resp.json()["id"]
+
+        update_resp = client.patch(
+            f"/api/procurements/{proc_id}",
+            json={"project_id": 9999}
+        )
+        assert update_resp.status_code == 422
+        assert "关联的项目不存在" in update_resp.json()["detail"]
+
+    def test_procurement_valid_project_allowed(self, client):
+        project_resp = client.post("/api/projects", json={
+            "customer_name": "Valid Proc Test",
+            "project_name": "Valid Proc Project",
+            "manager": "Zhou",
+            "phase": "demolition",
+            "progress": 10,
+            "start_date": str(date.today()),
+            "expected_finish": str(date.today() + timedelta(days=60)),
+            "risk_level": "low"
+        })
+        project_id = project_resp.json()["id"]
+        project_name = project_resp.json()["project_name"]
+
+        procurement_data = {
+            "project_id": project_id,
+            "project_name": project_name,
+            "material": "Valid Material",
+            "supplier": "Valid Supplier",
+            "quantity": 20,
+            "unit": "units",
+            "budget": 5000,
+            "status": "pending",
+            "required_date": str(date.today() + timedelta(days=7))
+        }
+        resp = client.post("/api/procurements", json=procurement_data)
+        assert resp.status_code == 201
+        assert resp.json()["project_id"] == project_id
 
 
 class TestInspectionRectification:
